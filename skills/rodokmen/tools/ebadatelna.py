@@ -269,20 +269,21 @@ def radek_matriky(mid, c):
 # ---------- snímky ----------
 
 def magick():
-    m = (shutil.which("magick") or next(iter(sorted(glob.glob(r"C:\Program Files\ImageMagick*\magick.exe"))), None)
-         or (os.name != "nt" and shutil.which("convert")))   # ImageMagick 6 bez magick; na Windows je convert.exe jiný program
-    if not m:
-        raise Chyba("chybí ImageMagick (magick) – je potřeba na náhled, výřez a zjištění rozměrů.")
-    return m
+    return (shutil.which("magick") or next(iter(sorted(glob.glob(r"C:\Program Files\ImageMagick*\magick.exe"))), None)
+            or (os.name != "nt" and shutil.which("convert")))
 
 
 def rozmer(path):
+    m = magick()
+    if m:
+        r = subprocess.run([m, path + "[0]", "-format", "%wx%h", "info:"], capture_output=True, text=True)
+        return r.stdout.strip() or "?"
     try:
-        m = magick()
-    except Chyba:   # bez ImageMagicku se celý snímek uloží, jen rozměr nevypíšeme
+        from PIL import Image
+        with Image.open(path) as im:
+            return f"{im.size[0]}x{im.size[1]}"
+    except Exception:
         return "?"
-    r = subprocess.run([m, path + "[0]", "-format", "%wx%h", "info:"], capture_output=True, text=True)
-    return r.stdout.strip() or "?"
 
 
 def odkaz(druh, xid, n):
@@ -325,19 +326,32 @@ def snimek(druh, xid, n, out, volby):
             src_f = os.path.join(tmp, "snimek.jpg" if data[:3] == b"\xff\xd8\xff" else "snimek.png")
             with open(src_f, "wb") as f:
                 f.write(data)
-            cmd = [magick(), src_f]
-            if vyrez:
-                wh = rozmer(src_f)
-                if not re.fullmatch(r"\d+x\d+", wh):
-                    raise Chyba("ImageMagick stažený snímek nepřečetl (poškozený přenos?) – zkus to znovu.")
-                w, h = (int(v) for v in wh.split("x"))
-                cw, ch = round((x1 - x0) * w), round((y1 - y0) * h)
-                cmd += ["-crop", f"{cw}x{ch}+{round(x0 * w)}+{round(y0 * h)}", "+repage"]
-            if nahled:
-                cmd += ["-resize", "25%"]
-            r = subprocess.run(cmd + ["-quality", "92", out], capture_output=True, text=True)
-            if r.returncode:
-                raise Chyba(f"ImageMagick selhal: {r.stderr.strip()[:300]}")
+            m = magick()
+            if m:
+                cmd = [m, src_f]
+                if vyrez:
+                    wh = rozmer(src_f)
+                    if not re.fullmatch(r"\d+x\d+", wh):
+                        raise Chyba("ImageMagick stažený snímek nepřečetl (poškozený přenos?) – zkus to znovu.")
+                    w, h = (int(v) for v in wh.split("x"))
+                    cw, ch = round((x1 - x0) * w), round((y1 - y0) * h)
+                    cmd += ["-crop", f"{cw}x{ch}+{round(x0 * w)}+{round(y0 * h)}", "+repage"]
+                if nahled:
+                    cmd += ["-resize", "25%"]
+                r = subprocess.run(cmd + ["-quality", "92", out], capture_output=True, text=True)
+                if r.returncode:
+                    raise Chyba(f"ImageMagick selhal: {r.stderr.strip()[:300]}")
+            else:
+                from PIL import Image
+                with Image.open(src_f) as im:
+                    if im.mode not in ("RGB", "L"):
+                        im = im.convert("RGB")
+                    if vyrez:
+                        w, h = im.size
+                        im = im.crop((round(x0 * w), round(y0 * h), round(x1 * w), round(y1 * h)))
+                    if nahled:
+                        im = im.resize((max(1, round(im.size[0] * 0.25)), max(1, round(im.size[1] * 0.25))), Image.Resampling.LANCZOS)
+                    im.save(out, "JPEG", quality=92)
     print(out, rozmer(out), "odkaz:", ref)
 
 

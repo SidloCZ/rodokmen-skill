@@ -25,13 +25,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def magick():
-    """Cesta k ImageMagicku; když chybí, skončí hned (před stahováním) srozumitelnou hláškou."""
-    m = (shutil.which("magick") or next(iter(sorted(glob.glob(r"C:\Program Files\ImageMagick*\magick.exe"))), None)
-         or (os.name != "nt" and shutil.which("convert")))   # ImageMagick 6 bez magick; na Windows je convert.exe jiný program
-    if not m:
-        sys.exit("Chybí ImageMagick (příkaz magick). Nainstaluj ho (macOS: brew install imagemagick, "
-                 "Windows: winget install ImageMagick.ImageMagick a restart Claude Code) a spusť nástroj znovu.")
-    return m
+    """Cesta k ImageMagicku; není-li nainstalován, vrátí None a použije se Python Pillow (PIL)."""
+    return (shutil.which("magick") or next(iter(sorted(glob.glob(r"C:\Program Files\ImageMagick*\magick.exe"))), None)
+            or (os.name != "nt" and shutil.which("convert")))
 _cj = http.cookiejar.CookieJar()
 _op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(_cj))
 _op.addheaders = [("User-Agent", "Mozilla/5.0 (rodokmen)")]
@@ -113,7 +109,7 @@ def snimek(bid, n, out, nahled=False):
     if nahled:
         tier = max(1, tier - 2)
     tmp = tempfile.mkdtemp(prefix="trebon_")
-    rows, y = [], 0
+    grid, y = [], 0
     while True:
         x, row = 0, []
         while True:
@@ -126,16 +122,44 @@ def snimek(bid, n, out, nahled=False):
             x += 1
         if not row:
             break
-        rp = os.path.join(tmp, f"row_{y}.png")
-        subprocess.run([MAGICK, *row, "-crop", "768x769+0+0", "+repage", "+append", rp], check=True)
-        rows.append(rp)
+        grid.append(row)
         y += 1
-    subprocess.run([MAGICK, *rows, "-crop", "100%x768+0+0", "+repage", "-append", out], check=True)
+    if MAGICK:
+        rows = []
+        for y, row in enumerate(grid):
+            rp = os.path.join(tmp, f"row_{y}.png")
+            subprocess.run([MAGICK, *row, "-crop", "768x769+0+0", "+repage", "+append", rp], check=True)
+            rows.append(rp)
+        subprocess.run([MAGICK, *rows, "-crop", "100%x768+0+0", "+repage", "-append", out], check=True)
+        r = subprocess.run([MAGICK, out + "[0]", "-format", "%wx%h", "info:"], capture_output=True, text=True)
+        dims_str = r.stdout
+    else:
+        from PIL import Image
+        tile_rows = []
+        for row in grid:
+            r_ims = []
+            for p in row:
+                with Image.open(p) as im:
+                    w, h = im.size
+                    r_ims.append(im.crop((0, 0, min(768, w), min(768, h))).copy())
+            tile_rows.append(r_ims)
+        tw = sum(im.size[0] for im in tile_rows[0]) if tile_rows else 0
+        th = sum(r[0].size[1] for r in tile_rows if r)
+        canvas = Image.new("RGB", (tw, th))
+        y_off = 0
+        for r_ims in tile_rows:
+            x_off = 0
+            for im in r_ims:
+                canvas.paste(im, (x_off, y_off))
+                x_off += im.size[0]
+            y_off += r_ims[0].size[1] if r_ims else 0
+        os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+        canvas.save(out, "JPEG", quality=90)
+        dims_str = f"{tw}x{th}"
     for f in os.listdir(tmp):
         os.remove(os.path.join(tmp, f))
     os.rmdir(tmp)
-    r = subprocess.run([MAGICK, out + "[0]", "-format", "%wx%h", "info:"], capture_output=True, text=True)
-    print(out, r.stdout, "odkaz:", ref)
+    print(out, dims_str, "odkaz:", ref)
 
 
 def svazek(bid):

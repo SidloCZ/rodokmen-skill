@@ -55,6 +55,42 @@ SIT_ZAKAZ = ["Bash(curl:*)", "Bash(wget:*)"]   # stahování z archivů jen pře
 PY = sys.executable.replace("\\", "/") if os.name == "nt" else "python3"
 HLIDAC = (f'"{PY}" -I -c "import os,runpy;p=os.path.join(os.environ.get(\'CLAUDE_PROJECT_DIR\',\'.\'),'
           f'\'tools\',\'hlidac_site.py\');os.path.isfile(p) and runpy.run_path(p,run_name=\'__main__\')"')
+HLIDAC_AGY = (f'"{PY}" -I -X utf8 -c "import os,runpy;p=os.path.join(\'..\',\'tools\',\'hlidac_site.py\');'
+              f'p=p if os.path.isfile(p) else os.path.join(\'tools\',\'hlidac_site.py\');'
+              f'runpy.run_path(p,run_name=\'__main__\') if os.path.isfile(p) else print(\'{{\\\"decision\\\":\\\"allow\\\"}}\')"')
+
+
+def nastaveni_agy(dst, hlidac):
+    """Nastaví volitelný hlídač sítě v .agents/hooks.json pro Antigravity."""
+    agents_dir = os.path.join(dst, ".agents")
+    os.makedirs(agents_dir, exist_ok=True)
+    path = os.path.join(agents_dir, "hooks.json")
+    data = {}
+    if os.path.exists(path):
+        try:
+            data = json.load(open(path, encoding="utf-8"))
+        except ValueError:
+            return
+    puvodni = json.dumps(data, sort_keys=True)
+    if hlidac is True or (hlidac is None and "hlidac-site" in data):
+        data["hlidac-site"] = {
+            "enabled": True,
+            "PreToolUse": [
+                {
+                    "matcher": "run_command",
+                    "hooks": [{"type": "command", "command": HLIDAC_AGY, "timeout": 10}]
+                }
+            ]
+        }
+    elif hlidac is False and "hlidac-site" in data:
+        del data["hlidac-site"]
+    if json.dumps(data, sort_keys=True) != puvodni:
+        if data:
+            with open(path, "w", encoding="utf-8", newline="\n") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+                f.write("\n")
+        elif os.path.exists(path):
+            os.remove(path)
 
 
 def nastaveni(dst, hlidac):
@@ -119,11 +155,15 @@ def main():
     for d in ("vyrezy", "zdroje", "dokumenty", "pracovni"):
         os.makedirs(os.path.join(dst, d), exist_ok=True)
     os.makedirs(os.path.join(dst, ".claude"), exist_ok=True)
-    for name in ("CLAUDE.md", ".gitignore", ".gitattributes", "poznamky_pro_skill.md", os.path.join(".claude", "launch.json")):
+    os.makedirs(os.path.join(dst, ".agents"), exist_ok=True)
+    for name in ("AGENTS.md", "CLAUDE.md", ".gitignore", ".gitattributes", "poznamky_pro_skill.md", os.path.join(".claude", "launch.json")):
+        src_file = os.path.join(SKILL, "template", name)
         out = os.path.join(dst, name)
-        if not os.path.lexists(out):
-            copy(os.path.join(SKILL, "template", name), out)
-    nastaveni(dst, True if "--hlidac" in sys.argv else False if "--bez-hlidace" in sys.argv else None)
+        if os.path.exists(src_file) and not os.path.lexists(out):
+            copy(src_file, out)
+    hlidac_volba = True if "--hlidac" in sys.argv else False if "--bez-hlidace" in sys.argv else None
+    nastaveni(dst, hlidac_volba)
+    nastaveni_agy(dst, hlidac_volba)
     with open(os.path.join(dst, ".skill_verze"), "w", encoding="utf-8") as f:   # SKILL.md podle něj nabídne aktualizaci
         f.write(open(os.path.join(SKILL, "VERZE"), encoding="utf-8").read())
     print("Projekt připraven:", dst)

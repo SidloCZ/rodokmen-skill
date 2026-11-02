@@ -25,13 +25,9 @@ CACHE = os.path.join(ROOT, "pracovni", ".cache_aron")
 
 
 def magick():
-    """Cesta k ImageMagicku; když chybí, skončí hned (před stahováním) srozumitelnou hláškou."""
-    m = (shutil.which("magick") or next(iter(sorted(glob.glob(r"C:\Program Files\ImageMagick*\magick.exe"))), None)
-         or (os.name != "nt" and shutil.which("convert")))   # ImageMagick 6 bez magick; na Windows je convert.exe jiný program
-    if not m:
-        sys.exit("Chybí ImageMagick (příkaz magick). Nainstaluj ho (macOS: brew install imagemagick, "
-                 "Windows: winget install ImageMagick.ImageMagick a restart Claude Code) a spusť nástroj znovu.")
-    return m
+    """Cesta k ImageMagicku; není-li nainstalován, vrátí None a použije se Python Pillow (PIL)."""
+    return (shutil.which("magick") or next(iter(sorted(glob.glob(r"C:\Program Files\ImageMagick*\magick.exe"))), None)
+            or (os.name != "nt" and shutil.which("convert")))
 
 
 def get(url, binary=False, tries=4):
@@ -102,20 +98,41 @@ def fetch_image(dzi_url, level_offset=1, out="page.jpg", crop=None):
 
         with cf.ThreadPoolExecutor(8) as ex:
             list(ex.map(dl, jobs))
-        # a tile with c > 0 (r > 0) carries `ov` extra pixels on its left (top) edge;
-        # crop every tile to its own ts x ts cell, then append rows and columns
-        # po řádcích: jeden příkaz na celou stránku by na Windows přesáhl limit délky příkazové řádky (32 767 znaků)
-        row_files = []
-        for r in range(r0, r1 + 1):
-            args = [MAGICK]
-            for c in range(c0, c1 + 1):
-                p = os.path.join(tmp, f"{c}_{r}.jpg")
-                cw, ch = min(ts, w - c * ts), min(ts, h - r * ts)
-                ox, oy = (ov if c > 0 else 0), (ov if r > 0 else 0)
-                args += ["(", p, "-crop", f"{cw}x{ch}+{ox}+{oy}", "+repage", ")"]
-            row_files.append(os.path.join(tmp, f"row_{r}.miff"))   # MIFF zachová vlastnosti JPEG (podvzorkování barev)
-            subprocess.run(args + ["+append", row_files[-1]], check=True)
-        subprocess.run([MAGICK, *row_files, "-append", "-quality", "88", out], check=True)
+        if MAGICK:
+            # a tile with c > 0 (r > 0) carries `ov` extra pixels on its left (top) edge;
+            # crop every tile to its own ts x ts cell, then append rows and columns
+            # po řádcích: jeden příkaz na celou stránku by na Windows přesáhl limit délky příkazové řádky (32 767 znaků)
+            row_files = []
+            for r in range(r0, r1 + 1):
+                args = [MAGICK]
+                for c in range(c0, c1 + 1):
+                    p = os.path.join(tmp, f"{c}_{r}.jpg")
+                    cw, ch = min(ts, w - c * ts), min(ts, h - r * ts)
+                    ox, oy = (ov if c > 0 else 0), (ov if r > 0 else 0)
+                    args += ["(", p, "-crop", f"{cw}x{ch}+{ox}+{oy}", "+repage", ")"]
+                row_files.append(os.path.join(tmp, f"row_{r}.miff"))   # MIFF zachová vlastnosti JPEG (podvzorkování barev)
+                subprocess.run(args + ["+append", row_files[-1]], check=True)
+            subprocess.run([MAGICK, *row_files, "-append", "-quality", "88", out], check=True)
+        else:
+            from PIL import Image
+            total_w = sum(min(ts, w - c * ts) for c in range(c0, c1 + 1))
+            total_h = sum(min(ts, h - r * ts) for r in range(r0, r1 + 1))
+            canvas = Image.new("RGB", (total_w, total_h))
+            y_off = 0
+            for r in range(r0, r1 + 1):
+                ch = min(ts, h - r * ts)
+                oy = ov if r > 0 else 0
+                x_off = 0
+                for c in range(c0, c1 + 1):
+                    cw = min(ts, w - c * ts)
+                    ox = ov if c > 0 else 0
+                    p = os.path.join(tmp, f"{c}_{r}.jpg")
+                    with Image.open(p) as tile_im:
+                        canvas.paste(tile_im.crop((ox, oy, ox + cw, oy + ch)), (x_off, y_off))
+                    x_off += cw
+                y_off += ch
+            os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+            canvas.save(out, "JPEG", quality=88)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)   # uklidit i při chybě stahování nebo magick
     return out, (W, H)

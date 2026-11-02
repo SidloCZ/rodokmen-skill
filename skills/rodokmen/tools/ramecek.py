@@ -18,13 +18,17 @@ PATH = os.path.join(ROOT, "data", "zvyrazneni.json")
 
 
 def magick():
-    """Cesta k ImageMagicku; když chybí, skončí hned (před stahováním) srozumitelnou hláškou."""
-    m = (shutil.which("magick") or next(iter(sorted(glob.glob(r"C:\Program Files\ImageMagick*\magick.exe"))), None)
-         or (os.name != "nt" and shutil.which("convert")))   # ImageMagick 6 bez magick; na Windows je convert.exe jiný program
-    if not m:
-        sys.exit("Chybí ImageMagick (příkaz magick). Nainstaluj ho (macOS: brew install imagemagick, "
-                 "Windows: winget install ImageMagick.ImageMagick a restart Claude Code) a spusť nástroj znovu.")
-    return m
+    """Cesta k ImageMagicku; není-li nainstalován, vrátí None a použije se Python Pillow (PIL)."""
+    return (shutil.which("magick") or next(iter(sorted(glob.glob(r"C:\Program Files\ImageMagick*\magick.exe"))), None)
+            or (os.name != "nt" and shutil.which("convert")))
+
+
+def check_img_backend():
+    if not magick():
+        try:
+            import PIL  # noqa: F401
+        except ImportError:
+            sys.exit("Chybí ImageMagick (příkaz magick) i knihovna Pillow (PIL). Nainstaluj Pillow (`pip install Pillow`) nebo ImageMagick.")
 
 
 def preview(key, boxes):
@@ -32,12 +36,23 @@ def preview(key, boxes):
     src = os.path.join(ROOT, "vyrezy", key + ".jpg")
     out = os.path.join(ROOT, "pracovni", f"ramecek_{key}.jpg")
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    w, h = (int(v) for v in subprocess.run([MAGICK, src + "[0]", "-format", "%w %h", "info:"],
-                                            capture_output=True, text=True, check=True).stdout.split())
-    cmd = [MAGICK, src, "-fill", "none", "-stroke", "#d7302a", "-strokewidth", str(max(3, w // 400))]
-    for x0, y0, x1, y1 in boxes:
-        cmd += ["-draw", f"rectangle {x0 * w:.0f},{y0 * h:.0f},{x1 * w:.0f},{y1 * h:.0f}"]
-    subprocess.run(cmd + [out], check=True)
+    if MAGICK:
+        w, h = (int(v) for v in subprocess.run([MAGICK, src + "[0]", "-format", "%w %h", "info:"],
+                                                capture_output=True, text=True, check=True).stdout.split())
+        cmd = [MAGICK, src, "-fill", "none", "-stroke", "#d7302a", "-strokewidth", str(max(3, w // 400))]
+        for x0, y0, x1, y1 in boxes:
+            cmd += ["-draw", f"rectangle {x0 * w:.0f},{y0 * h:.0f},{x1 * w:.0f},{y1 * h:.0f}"]
+        subprocess.run(cmd + [out], check=True)
+    else:
+        from PIL import Image, ImageDraw
+        with Image.open(src) as im:
+            im = im.convert("RGB")
+            w, h = im.size
+            draw = ImageDraw.Draw(im)
+            lw = max(3, w // 400)
+            for x0, y0, x1, y1 in boxes:
+                draw.rectangle([round(x0 * w), round(y0 * h), round(x1 * w), round(y1 * h)], outline="#d7302a", width=lw)
+            im.save(out, "JPEG", quality=90)
     return out
 
 
@@ -45,7 +60,7 @@ def main():
     if len(sys.argv) < 3:
         sys.exit(__doc__)
     key = sys.argv[1]
-    magick()   # bez ImageMagicku skončit dřív, než se rámeček zapíše
+    check_img_backend()   # bez ImageMagicku/Pillow skončit dřív, než se rámeček zapíše
     data = json.load(open(PATH, encoding="utf-8")) if os.path.exists(PATH) else {}
     if sys.argv[2] == "--nahled":
         print(preview(key, data.get(key, {}).get("boxes", [])))

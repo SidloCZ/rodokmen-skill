@@ -26,13 +26,9 @@ HOSTS = ("images.soalitomerice.cz", "images.archives.cz")   # jen obrázkové se
 
 
 def magick():
-    """Cesta k ImageMagicku; když chybí, skončí hned (před stahováním) srozumitelnou hláškou."""
-    m = (shutil.which("magick") or next(iter(sorted(glob.glob(r"C:\Program Files\ImageMagick*\magick.exe"))), None)
-         or (os.name != "nt" and shutil.which("convert")))   # ImageMagick 6 bez magick; na Windows je convert.exe jiný program
-    if not m:
-        sys.exit("Chybí ImageMagick (příkaz magick). Nainstaluj ho (macOS: brew install imagemagick, "
-                 "Windows: winget install ImageMagick.ImageMagick a restart Claude Code) a spusť nástroj znovu.")
-    return m
+    """Cesta k ImageMagicku; není-li nainstalován, vrátí None a použije se Python Pillow (PIL)."""
+    return (shutil.which("magick") or next(iter(sorted(glob.glob(r"C:\Program Files\ImageMagick*\magick.exe"))), None)
+            or (os.name != "nt" and shutil.which("convert")))
 
 
 def get(url):
@@ -79,14 +75,23 @@ def main():
                 fh.write(get(f"{base}/TileGroup{g}/{L}-{xx}-{y}.jpg"))
         with cf.ThreadPoolExecutor(4) as ex:   # 4 souběžně: několikrát rychlejší, server archivu nezatěžuje víc než 4 prohlížeče
             list(ex.map(tile, [(y, xx) for y in range(ny) for xx in range(nx)]))
-        # řádky dlaždic +append, pak řádky pod sebe -append (montage na ImageMagicku 7.1.2 padá bez písma);
-        # krátká jména (cwd=d) a po řádcích: celá stránka v jednom příkazu by na Windows přesáhla limit příkazové řádky
-        rows = []
-        for y in range(ny):
-            rows.append(f"row{y:03d}.miff")   # MIFF zachová vlastnosti JPEG (podvzorkování barev)
-            subprocess.run([MAGICK, *[f"{y:03d}_{xx:03d}.jpg" for xx in range(nx)], "+append", rows[-1]], check=True, cwd=d)
-        subprocess.run([MAGICK, *rows, "-append", "-crop", f"{w}x{h}+0+0", "+repage", "-quality", "88",
-                        os.path.abspath(out)], check=True, cwd=d)
+        if MAGICK:
+            # řádky dlaždic +append, pak řádky pod sebe -append (montage na ImageMagicku 7.1.2 padá bez písma);
+            # krátká jména (cwd=d) a po řádcích: celá stránka v jednom příkazu by na Windows přesáhla limit příkazové řádky
+            rows = []
+            for y in range(ny):
+                rows.append(f"row{y:03d}.miff")   # MIFF zachová vlastnosti JPEG (podvzorkování barev)
+                subprocess.run([MAGICK, *[f"{y:03d}_{xx:03d}.jpg" for xx in range(nx)], "+append", rows[-1]], check=True, cwd=d)
+            subprocess.run([MAGICK, *rows, "-append", "-crop", f"{w}x{h}+0+0", "+repage", "-quality", "88",
+                            os.path.abspath(out)], check=True, cwd=d)
+        else:
+            from PIL import Image
+            canvas = Image.new("RGB", (w, h))
+            for y in range(ny):
+                for xx in range(nx):
+                    with Image.open(os.path.join(d, f"{y:03d}_{xx:03d}.jpg")) as tile_im:
+                        canvas.paste(tile_im, (xx * T, y * T))
+            canvas.save(os.path.abspath(out), "JPEG", quality=88)
     finally:
         shutil.rmtree(d, ignore_errors=True)
     print(out, w, h)

@@ -9,6 +9,9 @@ Sám nic nestahuje a nikam nic neposílá. Je to textová heuristika, ne neprůs
 Při jakékoli vlastní chybě příkaz pustí – rozbitý hlídač nesmí zablokovat práci.
 """
 import json, os, re, sys
+for _s in (sys.stdout, sys.stderr):
+    if hasattr(_s, "reconfigure"):
+        _s.reconfigure(encoding="utf-8", errors="replace")
 
 CMD = r"(?:^|[;&|(\n`]|\$\(|\b(?:then|do|else|exec|env|time|nohup|xargs|sudo)\s)\s*"
 CURL = re.compile(CMD + r"(curl|wget)(?:\.exe)?(?=\s|$)", re.I)
@@ -22,9 +25,9 @@ URL = re.compile(r"https?://([^/\s\"'`:;)]+)", re.I)
 VOLNE = ("localhost", "127.0.0.1", "0.0.0.0", "netlify.app", "netlify.com", "github.com", "githubusercontent.com",
          "npmjs.org", "pypi.org", "pythonhosted.org")
 RADA = ("Síť na weby archivů jen přes brzdu proti zablokování (tools/slusne.py), i u pomocníků:\n"
-        "  python3 -I tools/slusne.py curl …            místo curl/wget\n"
-        "  python3 -I tools/slusne.py pracovni/x.py …   místo python3 pracovni/x.py (skript se síťí)\n"
-        "  python3 -I tools/slusne.py bash pracovni/x.sh …\n"
+        "  python -I -X utf8 tools/slusne.py curl …            místo curl/wget\n"
+        "  python -I -X utf8 tools/slusne.py pracovni/x.py …   místo python pracovni/x.py (skript se sítí)\n"
+        "  python -I -X utf8 tools/slusne.py bash pracovni/x.sh …\n"
         "Nástroje v tools/ brzdu mají samy, spouštěj je normálně. Brzdu neobcházej (jiný příkaz, prohlížeč).")
 
 
@@ -81,12 +84,31 @@ def posoudit(tool, cmd, cwd):
 
 
 def main():
+    je_agy = False
     try:
         vstup = json.load(sys.stdin)
-        tool = vstup.get("tool_name", "")
-        cmd = (vstup.get("tool_input") or {}).get("command", "") or ""
-        duvod = posoudit(tool, cmd, vstup.get("cwd") or os.getcwd())
+        if "toolCall" in vstup:
+            je_agy = True
+            tc = vstup.get("toolCall") or {}
+            tname = tc.get("name", "")
+            tool = "PowerShell" if tname == "run_command" else tname
+            cmd = (tc.get("args") or {}).get("CommandLine", "") or ""
+            ws = vstup.get("workspacePaths") or []
+            cwd = ws[0] if ws else os.getcwd()
+        else:
+            tool = vstup.get("tool_name", "")
+            cmd = (vstup.get("tool_input") or {}).get("command", "") or ""
+            cwd = vstup.get("cwd") or os.getcwd()
+        duvod = posoudit(tool, cmd, cwd)
     except Exception:          # rozbitý hlídač příkaz pustí
+        if je_agy:
+            print(json.dumps({"decision": "allow"}))
+        return 0
+    if je_agy:
+        if duvod:
+            print(json.dumps({"decision": "deny", "reason": f"Hlídač sítě: {duvod}.\n{RADA}"}, ensure_ascii=False))
+        else:
+            print(json.dumps({"decision": "allow"}))
         return 0
     if duvod:
         print(json.dumps({"hookSpecificOutput": {
