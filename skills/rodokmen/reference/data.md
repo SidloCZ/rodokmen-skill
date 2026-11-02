@@ -1,8 +1,8 @@
 # Formát dat projektu
 
 Všechna data jsou v `data/`. Web se z nich generuje (`npm run data`), nikdy needituj `web/src/data/site.json` ručně.
-Po změnách spusť `python3 -I tools/kontrola.py`. Ukázku vyplněných dat má `SKILL_DIR/template/ukazka/`.
-Položky do JSON souborů přidávej a měň přes `python3 -I tools/zapis.py` (zachová formát souboru, viz SKILL.md).
+Po změnách spusť `python -I -X utf8 tools/kontrola.py`. Ukázku vyplněných dat má `SKILL_DIR/template/ukazka/`.
+Položky do JSON souborů přidávej a měň přes `python -I -X utf8 tools/zapis.py` (zachová formát souboru, viz SKILL.md).
 
 ## `osoby.py` – předci
 Kekulého čísla: 1 = výchozí osoba, otec osoby n = 2n, matka = 2n+1.
@@ -85,8 +85,9 @@ Viz `web.md`.
 - `zajimavosti.md` – `## Nadpis` + text, odkazy `[Jméno](/osoba/<slug>/)`.
 - `pribeh.md` – „Příběh <hlavního rodu>“: frontmatter `title`, `lead` + kapitoly `##`; když soubor neexistuje,
   položka menu se skryje. Jak psát: `pribehy.md`.
-- Poznámky pro Clauda v markdownu piš jako `<!-- … -->` – na web nejdou.
+- Poznámky pro agenta v markdownu piš jako `<!-- … -->` – na web nejdou.
 - `archivni_dotazy.md`, `udaje_od_rodiny.md` – volný text.
+- V **Režimu AI Genealog** jsou navíc strukturované badatelské případy v `pripady/<pripad>.md` a přehled v `pripady/PREHLED.md` + trvalý archiv stažených snímků v `archivalie/<archiv>_<obec>_<kniha>/`.
 
 ## Odkazy na osoby (slug)
 Slug = jméno bez diakritiky + rok, např. `jan-novak-1890`; při kolizi přidá číslo osoby. Přesné slugy po `npm run data`

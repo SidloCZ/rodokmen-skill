@@ -37,20 +37,86 @@ def main():
 
     if 1 not in P:
         err.append("chybí osoba 1 (výchozí osoba rodokmenu)")
+
+    def _rok_udalosti(p, znacka):
+        for f in p.get("f", []):
+            if f.strip().startswith(znacka):
+                m = re.search(r"\b(1[5-9]\d\d|20\d\d)\b", f)
+                if m:
+                    return int(m.group(1))
+        y = p.get("y", "")
+        if znacka == "*":
+            m = re.match(r"^(?:asi\s+|≈\s*|\*\s*)?(1[5-9]\d\d|20\d\d)", y.strip())
+            return int(m.group(1)) if m else None
+        if znacka == "†":
+            m = re.search(r"(?:–|†)\s*(?:asi\s+|≈\s*|před\s+)?(1[5-9]\d\d|20\d\d)", y)
+            return int(m.group(1)) if m else None
+        return None
+
+    def _kmen_prijmeni(jmeno):
+        if not jmeno or jmeno.startswith("otec neuveden"):
+            return ""
+        p = jmeno.strip().split()[-1].lower()
+        for konc in ("ová", "ova", "ých", "ů"):
+            if len(p) > len(konc) + 2 and p.endswith(konc):
+                return p[:-len(konc)]
+        if len(p) > 3 and p.endswith(("ý", "á", "í")):
+            return p[:-1]
+        return p
+
+    sprezky_re = re.compile(r"(?:[aeou]y[bcčdďfghjklmnňpqrřsštťvzž]|cz|sz|rz)", re.I)
+
     for k, p in P.items():
         if not isinstance(k, int) or k < 1:
             err.append(f"osoba {k!r}: číslo musí být kladné celé číslo")
             continue
+        jmeno = p.get("n", "")
         if k > 1 and k // 2 not in P and k not in SAME:
-            warn.append(f"osoba {k} ({p.get('n')}): v rodokmenu chybí její dítě {k // 2} – je číslo správně?")
+            warn.append(f"osoba {k} ({jmeno}): v rodokmenu chybí její dítě {k // 2} – je číslo správně?")
         st = p.get("st", "unk")
         if st not in ("doc", "prob", "fam", "mh", "unk"):
             err.append(f"osoba {k}: neznámý stav '{st}'")
         for r in p.get("r", []):
             if r not in keys:
-                err.append(f"osoba {k} ({p.get('n')}) cituje neexistující zápis '{r}'")
+                err.append(f"osoba {k} ({jmeno}) cituje neexistující zápis '{r}'")
         if st == "doc" and not p.get("r"):
-            warn.append(f"osoba {k} ({p.get('n')}) je 'doc' (doloženo), ale necituje žádný zápis")
+            warn.append(f"osoba {k} ({jmeno}) je 'doc' (doloženo), ale necituje žádný zápis")
+
+        # Kontrola nepočeštěných spřežek v příjmení (např. Foytik/Foitík místo Fojtík)
+        prijmeni = jmeno.strip().split()[-1] if jmeno and not jmeno.startswith("otec neuveden") else ""
+        if prijmeni and sprezky_re.search(prijmeni):
+            warn.append(f"osoba {k} ({jmeno}): příjmení obsahuje starou spřežku ({sprezky_re.search(prijmeni).group(0)}) – "
+                        f"do 'n' patří sjednocená dnešní podoba (např. Foytik → Fojtík), dobový zápis patří do prepisy.json")
+
+        # Chronologická a biologická kontrola (ochrana proti spojení dvou jmenovců v obci)
+        nar = _rok_udalosti(p, "*")
+        umr = _rok_udalosti(p, "†")
+        sna = _rok_udalosti(p, "×")
+        if nar and umr and nar > umr:
+            err.append(f"osoba {k} ({jmeno}): rok narození ({nar}) je větší než rok úmrtí ({umr})")
+        if nar and sna and sna - nar < 14:
+            warn.append(f"osoba {k} ({jmeno}): sňatek ({sna}) v podezřele nízkém věku ({sna - nar} let) – nejde o jmenovce?")
+        if umr and sna and sna > umr:
+            err.append(f"osoba {k} ({jmeno}): sňatek ({sna}) po roce úmrtí ({umr}) – záměna dvou osob stejného jména!")
+
+        if k > 1 and (k // 2) in P:
+            dite = P[k // 2]
+            d_nar = _rok_udalosti(dite, "*")
+            je_otec = (k % 2 == 0)
+            if nar and d_nar:
+                vek = d_nar - nar
+                if vek < 15 or (je_otec and vek > 75) or (not je_otec and vek > 52):
+                    warn.append(f"osoba {k} ({jmeno}) a dítě {k // 2} ({dite.get('n')}): věk rodiče při narození dítěte "
+                                f"je {vek} let ({nar} → {d_nar}) – ověř, zda nejde o záměnu generace nebo jmenovce v obci!")
+            if umr and d_nar:
+                if (not je_otec and d_nar > umr) or (je_otec and d_nar > umr + 1):
+                    err.append(f"osoba {k} ({jmeno}) zemřela {umr}, ale dítě {k // 2} ({dite.get('n')}) se narodilo {d_nar} "
+                               f"– zřejmě spojeni dva různí nositelé téhož jména!")
+            if je_otec:
+                k1, k2 = _kmen_prijmeni(jmeno), _kmen_prijmeni(dite.get("n", ""))
+                if k1 and k2 and k1 != k2 and re.sub(r"[ijyíý]", "i", k1) == re.sub(r"[ijyíý]", "i", k2):
+                    warn.append(f"osoba {k} ({jmeno}) a dítě {k // 2} ({dite.get('n')}): nejednotný pravopis příjmení "
+                                f"(i/j/y, např. Foitík × Fojtík) – sjednoť v osoby.py")
     for s in SIDE:
         if s.get("k") not in P:
             err.append(f"boční příbuzný '{s.get('n')}' patří k neexistující osobě {s.get('k')}")

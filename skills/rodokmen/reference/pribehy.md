@@ -5,7 +5,7 @@ nebo „rod žil sto let v jednom domě“ ano. Nečekej s tím až na konec vý
 
 ## Zajímavosti („fun facts“) – sbírej průběžně
 Kdykoli při čtení zápisu narazíš na něco neobvyklého, **hned** to napiš do `data/zajimavosti.md` jako krátký odstavec
-a řekni to uživateli jako příběh. Po každém větším kole spusť `python3 -I tools/napady.py`. Nástroj projde data
+a řekni to uživateli jako příběh. Po každém větším kole spusť `python -I -X utf8 tools/napady.py`. Nástroj projde data
 a vypíše náměty (svatby krátce před porodem, rod v jednom domě, sňatky příbuzných, dlouhověkost, epidemie…).
 Každý námět si ověř v zápisu, než ho napíšeš.
 

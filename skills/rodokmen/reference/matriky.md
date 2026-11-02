@@ -26,11 +26,14 @@ Mladší knihy jsou na matričním úřadě obce s rozšířenou působností / 
    **Druhopisy** (duplikáty pro děkanát nebo úřad, např. „T“ svazky v ZA Opava) mívají N, O a Z jednoho roku u sebe –
    hodí se, když originál chybí, je nečitelný nebo velký.
 3. **Index, pak kniha.** Index řazený po písmenech a letech dá stránku/folio; snímek odhadni (snímek ≈ folio × 1 až 2) a dolaď.
+   **POZOR na přehlédnutí řádku v hustém rejstříku:** nikdy neříkej „v rejstříku není“ jen z pohledu na celou stránku nebo z okna prohlížeče! Stránku rejstříku s hledaným písmenem vždy stáhni v plném rozlišení a rozřež na 5 překrývajících se vodorovných pásů:
+   `python -I -X utf8 tools/overit.py pracovni/rejstrik.jpg rejstrik pracovni/rej_pas`
+   Každý pás pak projdi řádek po řádku (překryv 10 % zajistí, že žádný řádek není přeříznutý vejpůl).
    Starší rejstříky (18. stol.) občas ukazují o 1–4 strany vedle – když zápis na udané straně není, listuj kolem.
    Posun „snímek – strana“ se v knize mění (vložené listy, chybějící strany) – přečti číslo strany na náhledu a dopočítej.
    U starých far se vyplatí nejdřív najít **souhrnný index** přes víc desetiletí (např. N/O/Z 1636–1746) – dovede
    rychle až do 17. století. Rejstříky bývají podle **německého pravopisu**: česká jména na O a V hledej i pod W
-   (Otava = Wotawa, Vávra = Wawra). Knihy pro více obcí bývají řazené po obcích, rejstřík na konci.
+   (Otava = Wotawa, Vávra = Wawra), Č/C pod Cz/Z, Š pod Sch/Sz, Fojtík pod Foytik/Voit. Knihy pro více obcí bývají řazené po obcích, rejstřík na konci.
    Velké fary mají rejstříky i jako **samostatné svazky** (např. rejstřík oddaných přes 300 let) – hledej je nejdřív.
    **Když matrika chybí** (není online nebo se nedochovala), zkus rejstřík – bývá vedený zvlášť a přežil i tam, kde kniha
    ne. Zápis v rejstříku dokládá datum, místo a otce; zapiš ho jako `prob` (opis, ne originál) a matriku zkus později.
@@ -47,20 +50,34 @@ Mladší knihy jsou na matričním úřadě obce s rozšířenou působností / 
    je najde podle obce. Ve východních Čechách časté (Rychnovsko, Dobrušsko, Opočensko). Židovské matriky viz `portaly.md`.
    Ve 20. století (1920–1945) zkus i **civilní matriky** lidí bez vyznání u okresních úřadů (vyzkoušeno v SOA Třeboň, viz `portaly.md`).
 
-## Čtení písma
-- Kurentový rejstřík: stáhni plné rozlišení a rozřež stránku na čtvrtiny (sloupec jmen + data),
-  `magick f.jpg -crop 1250x1650+X+Y +repage ctvrt.jpg`. **Dopisované řádky** se snadno přečtou špatně (Franziska × Heinrich,
+## Čtení písma a normalizace příjmení
+- Hustý kurentový rejstřík: stáhni plné rozlišení a rozřež stránku na překrývající se pásy pomocí
+  `python -I -X utf8 tools/overit.py f.jpg rejstrik pracovni/rej`. **Dopisované řádky** se snadno přečtou špatně (Franziska × Heinrich,
   strana 131 × 151) – údaj z rejstříku vždy ověř v matrice.
 - Do ~1780 latina nebo čeština, pak hodně němčina (kurent), od ~1860 často čeština, ve 20. století čeština.
 - Česká jména v němčině/latině: Johann/Joannes = Jan, Wenzel/Wenceslaus = Václav, Joseph = Josef, Franz/Franciscus = František,
   Maria = Marie, Anna, Katharina = Kateřina, Barbara = Barbora, Magdalena = Majdalena/Magdaléna, Theresia = Terezie,
-  Ludmilla = Lidmila, Dorothea = Dorota, Apollonia = Apolena, Georg/Georgius = Jiří, Matthias = Matěj, Adalbert = Vojtěch.
-- Příjmení se píše foneticky a mění se (Šaršon/Scharschon/Šaršoun, Kroupa/Kraupa). Hledej všechny varianty.
-- Ženská příjmení v němčině bez „-ová“ (Maria Novak = Marie Nováková).
+  Ludmilla = Lidmila, Dorothea = Dorota, Apollonia = Apolena, Georg/Georgius = Jiří, Matthias = Matěj, Adalbert = Vojtěch,
+  Laurenz/Laurentius = Vavřinec, Veit/Vitus = Vít, Aegidius = Jiljí, Rosina = Růžena/Rozina.
+- **Pravopis příjmení – věrný přepis vs. sjednocené jméno v rodokmenu:**
+  - V `data/prepisy.json` (`orig`) piš **vždy doslovný dobový zápis** (např. `Foytik`, `Scharschon`, `Kraupa`, `Tomschu`).
+  - V `data/osoby.py` (`n`) a `LINES` piš **sjednocenou novodobou českou podobu** pro celou větev:
+    - Staré spřežky uprostřed slova `ay/ey/oy/uy` před souhláskou převáděj na `aj/ej/oj/uj` (**`Foytik` → `Fojtík`**, ne napůl počeštěné `Foitík`; `Kreysa` → `Krejza`; `Heyduk` → `Hejduk`), `au` → `ou` (`Kraupa` → `Kroupa`), `cz` → `č`/`c` (`Czermak` → `Čermák`), `sz`/`sch` → `š` (`Schischka` → `Šiška`), `rz` → `ř`, `w` → `v` (`Wawra` → `Vávra`).
+    - Koncovky přídavných jmen `-ey`/`-ay` v Čechách → `-ý` (`Lhotskey` → `Lhotský`, `Wesely` → `Veselý`).
+    - **Moravská a jihočeská rodová příjmení na `-ů`** (`Tomšů`, `Fojtů`, `Janů`, `Ševců`, `Urbanů`, v něm. zápisech často `-u` jako `Tomschu`): v moderní češtině jsou **nesklonná a nepřechylují se**! Nikdy je u žen neměň na `-ová` ani `-íková` (**`Anna Tomšů`**, nikdy `Anna Tomšíková`).
+    - Když si u neobvyklého příjmení nejsi jistý dnešní podobou, ověř živý výskyt v daném okrese (např. kdejsme.cz) nebo se při prvním výskytu zeptej uživatele.
+- Ženská příjmení v němčině jsou bez „-ová“ (`Maria Novak` = `Marie Nováková`, ale u příjmení na `-ů` zůstává `-ů`).
 - Názvy obcí mívají staré tvary, třeba s předsunutým „V“ („Volešnice“ = Olešnice); při hledání obce zkus i ty.
-- Kurent: dlouhé „ſ“ vypadá jako „f“, „e“ jako „n“, „h“ s kličkou dolů. Při nejistotě porovnej se stejným písmenem
-  jinde na stránce stejné ruky – i u „divného“ příjmení (koncové „k“ psané skoro jako „r“: „-ek“ vypadá jako „-er“).
-  Slovo rozdělené přes konec řádku („Urlau-“ / „ber“) dočti na začátku dalšího řádku.
+- **Nejčastější záměny písmen v kurentu (vždy porovnej s jinými slovy téhož písaře na stránce):**
+  - **Velká písmena (kritické na začátku příjmení):**
+    - **`S` × `B` × `L`** (např. *Sušil* přečteno jako *Bušil*) – `S` v kurentu má horní smyčku či vlnovku bez uzavřeného spodního bříška u dříku, zatímco `B` má uzavřenou spodní smyčku.
+    - **`P` × `F` × `B` × `T`** (např. *Plešková* přečteno jako *Fl…*) – `P` a `F` mají v kurentu podobný horní tah, rozlišuj podle příčné čárky u `F` a spodní kličky u `P`, a porovnej s křestním jménem *Franz / Paul / Peter* na téže straně.
+    - **`K` × `R` × `N`**, **`J` × `G` × `Y`** (*Jan/Jana* psáno jako *Gan*, *Jiří* jako *Giří*), **`C` × `L` × `Z`**, **`V` × `W` × `M`**.
+  - **Malá písmena („hůlkové“ shluky):**
+    - `n` – `u` – `m` – `e` – `r` – `i`: v rychlém kurentu splývají do stejných zoubků; `u` má nad sebou oblouček/stříšku (často posunutou doprava), `e` vypadá jako velmi úzké `n`.
+    - `ſ` (dlouhé s) – `f` – `h` – `b` – `l` – `k`: dlouhé `ſ` nemá příčný škrt jako `f`; koncové `-k` se často píše skoro jako `-r` (příjmení na `-ek` pak vypadá jako `-er`).
+    - `a` – `o` – `u` v neuzavřených tazích.
+  - Slovo rozdělené přes konec řádku („Urlau-“ / „ber“) dočti na začátku dalšího řádku.
 - Daty bývají svátky (*Dominica*, *festum S. Joannis*) – v nejasných případech dopočítej.
 
 ### Slovníček (lat. / něm. → česky)
@@ -102,12 +119,24 @@ Mladší knihy jsou na matričním úřadě obce s rozšířenou působností / 
 | `mh` | jen z cizího stromu na internetu |
 | `unk` | známe jen místo v rodokmenu |
 
+## Ochrana proti záměně a kombinaci různých osob (homonyma v jedné obci)
+V českých a moravských obcích často žilo současně několik rodin se stejným příjmením i křestním jménem (např. tři různí *Janové Novákové* s manželkami *Annami* nebo stovky nositelů jednoho příjmení v městečku). Spojení křtu jednoho Jana se sňatkem nebo úmrtím druhého Jana zavede rodokmen do cizí větve.
+
+**Pravidlo 4 kotev – než osobu označíš jako `doc`, ověř:**
+1. **Číslo popisné (čp.) a grunt:** Od zavedení číslování domů (1770/1784) sleduj čp. v každém zápisu. Změní-li se čp. mezi sňatkem a narozením dětí (nebo mezi dětmi), ověř, zda šlo o podruha (*Inwohner*), který se stěhoval po vsi, nebo o **jiný pár stejného jména** na jiném gruntě.
+2. **Rodné příjmení a původ matky/manželky (včetně jejího otce a čp.):** Nikdy neztotožňuj rodiče jen podle křestních jmen (*Jan Novák + Anna*). Od ~1784 matriky uvádějí rodné příjmení matky a její rodiče – ty musí sedět napříč křty dětí i sňatkem.
+3. **Stav, povolání a okruh kmotrů (*patrini*):** Rozlišuj *sedlák (Bauer/rusticus)* × *domkář (Häusler/casarius)* × *podruh (Inwohner/inquilinus)* a konkrétní řemeslo (*soukeník, bednář, kovář*). Sleduj i kmotry u křtů dětí: rodina si zpravidla zvala stejné příbuzné či sousedy. Náhlá změna čp., povolání i kmotrů znamená jinou rodinu.
+4. **Vyloučení dětského úmrtí (nekronyma) a kolize sourozenců:**
+   - **Nekronymum (stejné jméno dalšího dítěte):** Když rodičům zemřelo malé dítě (např. *Jan \*1790, †1791*), velmi často dali totéž jméno dalšímu synovi (*Jan \*1794*). Najdeš-li křest předka, **vždy zkontroluj následujících 5–8 let** (křty dalších sourozenců nebo úmrtní matriku/index), zda toto dítě nezemřelo a nenarodil se mladší bratr stejného jména!
+   - **Rozestup dětí a chyby v úmrtních zápisech:** Dvě vlastní děti téže matky se nemohou narodit 2–8 měsíců po sobě (nejde-li o dvojčata). Pokud úmrtní zápis ze 20. století uvádí o rok jiné datum narození nebo jiné křestní jméno vdovy (např. *Marie* místo *Terezie*), přičemž datum sňatku, manžel i čp. sedí, jde obvykle o nepřesnost informátora při úmrtí – ověř v matrice oddaných a narozených.
+   - **Přehled jmenovců v obci:** Narazíš-li ve farnosti na více rodin téhož příjmení, založ si `pracovni/rodiny_<obec>_<prijmeni>.md` a vypisuj si do něj jednotlivé páry podle čísel popisných, abys je nikdy nesmíchal.
+
 ## Typické pasti (ze skutečného výzkumu)
-- Písař spletl jméno dědečka (Josef místo Václava) – rozhodne více zápisů téže rodiny.
-- Dítě zapsané pod jiným křestním jménem, než jakým ho volala rodina (Františka → v rodině Anna).
+- Písař spletl jméno dědečka (Josef místo Václava) – rozhodne více zápisů téže rodiny (křty sourozenců, sňatek).
+- Dítě zapsané pod jiným křestním jménem, než jakým ho volala rodina (Františka → v rodině Anna; Terezie → v úmrtním zápisu Marie).
 - Sňatek pár měsíců před porodem nebo po něm – není chyba, jen „svatba na poslední chvíli“; zajímavost pro web.
 - Nemanželské dítě nese příjmení matky; otec chybí nebo je dopsán později (legitimace na okraji).
-- Stejný předek dvakrát v rodokmenu (vzdálení příbuzní se vzali) – v datech `SAME`.
+- Stejný předek dvakrát v rodokmenu (vzdálení příbuzní se vzali, nebo otec i matka měli stejné rodné příjmení ze dvou větví) – v datech `SAME`.
 - Index nenašel ≠ zápis neexistuje. Zapiš, co přesně jsi prošel.
 - Pomocníci (subagenti) a OCR/AI čtou historické písmo chybně – vždy ověř sám (viz `playbook.md` §1 bod 10).
 

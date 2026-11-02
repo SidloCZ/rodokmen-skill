@@ -125,14 +125,25 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   po hledání a stránky výsledků neprocházej za sebou. Delší smyčku pusť v prohlížeči na pozadí, výsledky ukládej do
   `window` nebo `localStorage` a vyzvedávej po částech (nástroj pro JavaScript má limit asi 45 s). Pomocníkům to napiš do zadání.
 
-## MZA Brno (jižní Morava, Acta Publica) – bez nástroje
-- Portál `https://www.mza.cz/actapublica/`, bez přihlášení. Adresa actapublica.eu bývá za Cloudflare zablokovaná
-  („Sorry, you have been blocked“ – podle IP, i v běžném prohlížeči); když blokuje i mza.cz, ať uživatel vypne VPN
+## MZA Brno (jižní Morava, část Vysočiny, Zlínsko – Acta Publica) – prohlížeč + kooperativní ukládání
+- Portál `https://www.mza.cz/actapublica/`, bez přihlášení. Adresa `actapublica.eu` bývá za Cloudflare zablokovaná
+  („Sorry, you have been blocked“ – podle IP); vždy používej `www.mza.cz/actapublica/`. Když blokuje i `mza.cz`, ať uživatel vypne VPN
   nebo zkusí jinou síť.
-- Knihu najdi v prohlížeči podle obce nebo fary. Snímky jsou IIIF: adresu obrázku najdi v síťovém provozu a stáhni ji
-  přes `python3 -I tools/slusne.py curl …` (Python dostane HTTP 426). MZA blokuje IP adresu už po desítkách
-  rychlých dotazů nebo stovkách snímků za večer – jen konkrétní snímky, žádné předběžné stahování celých knih.
-  Dál podle „Ostatní portály“ níže.
+- **Pozor na ochranu proti robotům:** MZA přísně blokuje strojové stahování a rychlé dotazy (Python dostane HTTP 426, po sérii rychlých požadavků následuje IP ban na hodiny).
+- **Osvědčený kooperativní postup (prohlížeč + uložení uživatelem):**
+  1. V připojeném prohlížeči (`chrome-devtools` / `/browser`) procházej knihy a snímky tempem člověka (pauza min. 2–4 s, žádné smyčky `fetch`). Najdi svazek podle obce/fary a let (např. *Matrika 4928*), rejstřík nebo konkrétní snímek.
+  2. Nezkoušej obcházet ochranu serveru pro stahování plného rozlišení. Jakmile na snímku v prohlížeči najdeš hledaný zápis (nebo stránku rejstříku), nech kartu otevřenou na tomto snímku a napiš uživateli **strukturovanou výzvu k uložení**:
+     ```markdown
+     - **Našel jsem záznam:** snímek <N>, <datum>, <pořadí zápisu na stránce>, <krátce kdo>.
+     - **Prosím o uložení do `pracovni/<svazek>/` (nebo `dokumenty/`):**
+       - **Soubor:** `<přesný_název_souboru.png>`
+       - **Kde:** karta `Matrika <číslo>`, snímek <N> (<popis místa na stránce>). Karta je otevřená, nech ji na tomhle snímku.
+     - **Co z toho zatím čtu (orientačně z náhledu):**
+       - …
+     - **Příště:** <co budeme hledat v dalším kroku>. Po uložení napiš „uloženo“.
+     ```
+  3. **Finální čtení, přepis a výřez (`vyrez.py`, `ramecek.py`) dělej vždy až z uloženého snímku v plném rozlišení**, nikdy jen z náhledu v okně prohlížeče!
+  4. Jde-li v konkrétní síti stáhnout jednotlivý IIIF snímek bez blokace, vždy výhradně přes brzdu `python -I -X utf8 tools/slusne.py curl …` a jen pro snímek, který skutečně čteš.
 
 ## Pražské policejní přihlášky 1850–1914 (Národní archiv) – `tools/policie_prihlasky.py`
 - Karty pražských rodin: hlava rodiny, manželka s rokem a místem narození, děti s roky, adresy, někdy místo sňatku.

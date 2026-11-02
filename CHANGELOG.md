@@ -4,7 +4,25 @@ Změny ve skillu rodokmen, nejnovější verze nahoře. Každá verze má na Git
 [vydání (Releases)](https://github.com/sarsonj/rodokmen-skill/releases) – kdo chce dostávat upozornění,
 dá v repozitáři **Watch → Custom → Releases**.
 
-Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
+Project založený starší verzí agent sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
+
+## 0.7.0 – 2. 11. 2026
+
+Adaptace pro prostředí Antigravity (Windows), ochrana proti jmenovcům, režim AI Genealog a GEDCOM export/porovnání.
+
+**Nové**
+- Přechod na konvence Antigravity: `AGENTS.md`, `.agents/skills.json`, `.agents/hooks.json`, `.agents/launch.json` místo `CLAUDE.md` a `.claude/`.
+- Automatický fallback na Python knihovnu `Pillow` (`PIL`) ve všech 8 obrázkových nástrojích (`vyrez.py`, `ramecek.py`, `overit.py`, `aron_img.py`, `ebadatelna.py`, `soal_zoomify.py`, `trebon.py`, `ahmp_scan.py`), pokud není nainstalovaný `ImageMagick`.
+- `overit.py rejstrik`: automatické rozřezání hustě psaných stran rejstříků na 5 vodorovných překrývajících se pásů v šířce 2000 px.
+- **Režim AI Genealog**: badatelské případy v `pripady/<pripad>.md` a `pripady/PREHLED.md` + trvalý archiv stažených snímků v `archivalie/<archiv>_<obec>_<kniha>/`.
+- `ged_export.py` (export `data/osoby.py` do GEDCOM 5.5.1 UTF-8) a `ged_porovnej.py` (porovnání dvou GEDCOM souborů po generacích 1–10 se statistikou shody).
+- `kontrola.py`: kontrola zapomenutých archaických spřežek (`cz`, `sz`, `rz`, `w`, `au`, `ay/ey/oy/uy`), kontrola nejednotného pravopisu příjmení `i/j/y` mezi otcem a dítětem (`Fojtík` × `Foitík`), kontrola neměnnosti moravských příjmení na `-ů` (`Tomšů`) a biologické/chronologické kontroly rodičů a dětí.
+- `slusne.py`: zpřísnění limitu stahování obrázků a dlaždic na `0.15 s` (cca 6,6 snímku/s) pro vyšší ochranu proti zablokování IP.
+
+**Návody**
+- `reference/matriky.md` a `SKILL.md`: 4bodový protokol proti záměně jmenovců (homonym) ve stejné vsi (čp., rodné příjmení matky, povolání + kmotři, kontrola úmrtí dětí a nekronym), tabulka záměn velkých písmen kurentu (`S`×`B`, `P`×`F`×`B`, `K`×`R`, `J`×`G`) a sjednocení příjmení.
+- `reference/portaly.md`: kooperativní režim s uživatelem při blokaci prohlížeče v MZA Brno a ZA Opava.
+- `SKILL.md` a `AGENTS.md`: správa kontextu a doporučení `/compact` po dokončení větve či generace.
 
 ## 0.6.0 – 2. 11. 2026
 

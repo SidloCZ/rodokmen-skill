@@ -1,13 +1,13 @@
 ---
 name: rodokmen
-description: Průvodce tvorbou rodokmenu z českých matrik a rodinného webu pro lidi bez zkušeností s genealogií i programováním. Použij, když chce uživatel začít nebo pokračovat v rodokmenu, hledat předky v matrikách (ARON, archivy), číst a přepisovat matriční zápisy, psát zajímavosti a příběh rodu nebo postavit a zveřejnit rodinný web s vějířem předků, mapou a zápisy. Spouštěcí fráze: „rodokmen“, „předci“, „matriky“, „chci zjistit, odkud pochází moje rodina“.
+description: Průvodce tvorbou rodokmenu z českých matrik, osobní AI genealog pro řešení konkrétních badatelských záhad a stavitel rodinného webu. Použij, když chce uživatel začít nebo pokračovat v rodokmenu, vyřešit konkrétní genealogický případ nebo rozpor mezi zápisy (režim AI Genealog), hledat předky v matrikách (ARON, archivy), číst a přepisovat matriční zápisy, exportovat nebo porovnat GEDCOM, nebo postavit a zveřejnit rodinný web. Spouštěcí fráze: „rodokmen“, „předci“, „matriky“, „genealog“, „ověř v matrice“, „chci zjistit, odkud pochází moje rodina“.
 ---
 
-# Rodokmen z matrik + rodinný web
+# Rodokmen z matrik + Osobní AI Genealog + Rodinný web
 
-Vedeš člověka, který **nikdy nedělal genealogii ani neprogramoval**, od rodinných vzpomínek přes matriky
-až k hezkému rodinnému webu. Ty děláš technickou práci (stahování snímků, čtení, zápis dat, web);
-uživatel dodává znalost rodiny, rozhoduje sporná místa a schvaluje, co jde ven.
+Tento skill umí pracovat ve **dvou režimech** podle toho, co uživatel potřebuje (lze je kdykoli kombinovat v jednom projektu):
+1. **Režim Celý rodokmen a rodinný web (Fáze 0–5):** vede člověka krok za krokem od rodinných vzpomínek přes matriky až k rodinnému webu (nebo exportu do GEDCOMu).
+2. **Režim AI Genealog (konkrétní badatelské případy a záhady):** asistent zkušenějšího badatele. Dostane konkrétní badatelský úkol (vysvětlit rozpor mezi zdroji, prověřit podezřelý řetězec předků, dohledat jednu větev od dané osoby, přečíst a přeložit zápis nebo zjistit u sourozenců čitelnější příjmení matky), vyřeší ho, doloží výřezy a uloží ucelenou badatelskou zprávu do `pripady/<klic>.md` a snímky trvale do `archivalie/` – bez nutnosti stavět a publikovat web.
 
 **Složka tohoto skillu** (dále `SKILL_DIR`) je `skills/rodokmen` (nebo `.agents/skills/rodokmen`, případně cesta k `SKILL.md` uvedená v seznamu dostupných skillů).
 Najdeš v ní `tools/` (nástroje), `template/` (šablona projektu a webu) a `reference/` (podrobné návody – čti je, až je potřebuješ).
@@ -100,9 +100,9 @@ Základní smyčka pro každou osobu:
 3. **Najdi svazek**: podle obce → farnost → archiv. ARON: `python -I -X utf8 tools/aron_search.py "Obec"`, SOA Třeboň:
    `tools/trebon.py`, SOA Plzeň: `tools/portafontium.py`, SOA Praha (střední Čechy): `tools/ebadatelna.py`,
    Praha: `tools/ahmp_search.sh`; ostatní a Rakousko viz `reference/portaly.md`. Sňatek hledej nejdřív ve farnosti nevěsty.
-   Je-li ke svazku index (rejstřík), začni jím. Starší matriky (před ~1784) bývají ve faře sousedního města.
+   Je-li ke svazku index (rejstřík), začni jím – **hustý kurentový rejstřík vždy stáhni v plném rozlišení a rozřež na překrývající se pásy** (`python -I -X utf8 tools/overit.py pracovni/rejstrik.jpg rejstrik pracovni/rej`), nikdy neříkej „v rejstříku není“ jen z pohledu na celou stránku v prohlížeči! Starší matriky (před ~1784) bývají ve faře sousedního města.
 4. **Stáhni snímek** do `pracovni/<svazek>/` a nech ho tam – před dalším stažením se podívej, jestli ho už nemáš
-   (šetří čas, archiv i CAPTCHY). Najdi zápis, **přečti ho sám ze snímku** (přiblíž si výřez v plném rozlišení).
+   (šetří čas, archiv i CAPTCHY). U chráněných archivů bez přímého stahování (MZA Brno – Acta Publica, ZA Opava při CAPTCHe) najdi snímek v prohlížeči a požádej uživatele o uložení snímku v plném rozlišení strukturovanou výzvou (viz `reference/portaly.md`). Najdi zápis, **přečti ho sám ze snímku v plném rozlišení**.
 5. **Zapiš nález** (vždy všech 6 kroků, i když to zdržuje):
    1. svazek do `data/svazky.json` (ARON: `python -I -X utf8 tools/aron_img.py <apu> svazek`),
    2. zápis do `data/zaznamy.json` (klíč = popisný název, např. `holice_krest_jan_novak_1890`; odkaz na snímek) přes `tools/zapis.py`,
@@ -123,7 +123,9 @@ Pravidla, která chrání kvalitu (naučená na skutečném projektu):
   (objekt napiš do `pracovni/x.json`, nástroj změní jen tu položku), `osoby.py` a markdown nástrojem pro úpravu souborů.
   Nikdy `sed -i` ani skript, který soubor přepíše celý – rozbije formát a v historii je pak změněný celý soubor.
 - **`doc` jen to, co jsi četl přímo na snímku.** Shoda jména a doby bez přímého dokladu = `prob` + poznámka proč.
-- **Nic nedomýšlej.** Nejisté čtení „(?)“, rozpory zapiš do `ISSUES`. Písaři se pletli (jména sourozenců, věk, Anna/Františka).
+- **Pravidlo 4 kotev proti záměně jmenovců v obci (anti-homonymní protokol):** V jedné obci často žilo více rodin téhož příjmení i křestního jména (*Jan Novák + Anna*). Než spojíš dva zápisy k jedné osobě (`doc`), ověř: (1) **číslo popisné (čp.)**, (2) **rodné příjmení a rodiče matky/manželky**, (3) **povolání/stav a okruh kmotrů**, (4) **vyloučení dětského úmrtí (nekronyma)** – zkontroluj následujících 5–8 let, zda nalezené dítě nezemřelo a nenarodil se mladší sourozenec téhož jména! Žije-li v obci více rodin stejného příjmení, veď si přehled párů podle čp. v `pracovni/rodiny_<obec>_<prijmeni>.md` (viz `reference/matriky.md`).
+- **Normalizace příjmení vs. dobový zápis:** V `prepisy.json` (`orig`) piš doslovný dobový pravopis (`Foytik`, `Tomschu`), ale v `osoby.py` (`n`) a `LINES` drž sjednocenou novodobou českou podobu (`Foytik` → `Fojtík`, ne `Foitík`; moravská rodová příjmení na `-ů` jako `Tomšů` u žen nepřechyluj na `Tomšíková` – viz `reference/matriky.md`).
+- **Nic nedomýšlej.** Nejisté čtení „(?)“, rozpory zapiš do `ISSUES`. Písaři se pletli (jména sourozenců, věk, Anna/Františka, Marie/Terezie v úmrtním zápisu).
 - **Čti celý zápis včetně okrajů** – pozdější poznámky o úmrtí, sňatku, legitimaci bývají nejcennější.
 - **Rodina přes čísla domů**: stejné číslo popisné a řemeslo přes generace je silná stopa; v knize hledej celé domácnosti.
 - **Ztotožnění míst ověř** podle panství/kraje v zápisu (německé „Langenau“ je v Čechách několikrát – rozhodne „bey Hohenelbe“ = u Vrchlabí).
@@ -136,11 +138,12 @@ Pravidla, která chrání kvalitu (naučená na skutečném projektu):
   `pracovni/sporna_cteni.json` (klíč zápisu, výřez, otázka, možnosti, tvůj návrh) a udělej z nich jednu stránku,
   kde uživatel u každého klikne na odpověď. Když to jde, použij artefakt s ukládáním odpovědí, jinak HTML soubor
   s tlačítkem „stáhnout odpovědi“. Odpovědi pak zapracuj a zapiš do deníku.
+- **Správa kontextu a úspora tokenů (`/compact`):** Dlouhé konverzace s desítkami načtených snímků matrik spotřebují až 80 % tokenů na opakované čtení cache. Jakmile dokončíš ucelený krok (např. jednu generaci nebo větev) a vše zapíšeš do `data/osoby.py`, `data/STAV.md` a `data/research_log.md`, **doporuč uživateli příkaz `/compact`** (případně novou konverzaci), aby se z kontextu uvolnily staré snímky.
 
 ### Šetrně k archivům – brzda `tools/slusne.py`
 Archivy blokují IP adresu po sérii rychlých dotazů (MZA i celou síť na hodiny, ZA Opava na 30 minut). Blokaci
 nezpůsobují nástroje, ale rychlé dočasné skripty a smyčky `curl`. Nástroje v `tools/` mají brzdu samy: společný limit
-pro každý web (dotaz 1 za 2 s, obrázky 10 za s) pro všechny procesy na počítači.
+pro každý web (dotaz 1 za 2 s, obrázky a dlaždice nejvýš 1 za 0,15 s) pro všechny procesy na počítači.
 - **Síť jen přes brzdu, i u pomocníků:** vlastní skript `python -I -X utf8 tools/slusne.py pracovni/x.py …`, curl
   `python -I -X utf8 tools/slusne.py curl …`, shellový skript `python -I -X utf8 tools/slusne.py bash pracovni/x.sh`.
   I místní náhled webu zkoušej přes `slusne.py curl`.
@@ -195,10 +198,26 @@ Podrobně `reference/web.md`. Ve zkratce:
    Na web jde i „Co hledáme“ (`ISSUES`), poznámky osob a deník. Hlášky `CITLIVÉ` z `kontrola.py` vyřeš s uživatelem;
    co na webu nechat smí, zapiš úryvkem textu do `web.json` → `citlive_schvaleno` (pak se už nehlásí).
 
-## Fáze 5 – Zveřejnění (volitelné, jen se souhlasem)
-Výchozí cesta je **Netlify** (zdarma): `npm run nasadit`. Přihlášení k Netlify a první propojení webu jsou interaktivní –
-dej je uživateli jako `! npx netlify-cli login` atd. (postup v `reference/web.md`). Pokročilá varianta: vlastní server (Docker/CapRover).
-Nic nezveřejňuj bez výslovného souhlasu uživatele.
+## Fáze 5 – Zveřejnění nebo Export do GEDCOMu (volitelné, jen se souhlasem)
+- **Export do genealogických programů (GEDCOM 5.5.1):** Chce-li uživatel rodokmen otevřít v programu (MacFamilyTree, MyHeritage, Gramps, Ancestral Quest…) nebo ho porovnat se svým dosavadním výzkumem:
+  - Export celého stromu (nebo podstromu od konkrétní osoby, např. dědy `--vychozi 4`):
+    `python -I -X utf8 tools/ged_export.py vystupy/rodokmen.ged [--vychozi <kekule_cislo>]`
+  - Porovnání nalezených předků s uživatelovým referenčním GEDCOMem po generacích:
+    `python -I -X utf8 tools/ged_porovnej.py dokumenty/referencni.ged ["Jméno výchozí osoby"] [--vychozi <kekule_cislo>]`
+- **Zveřejnění webu:** Výchozí cesta je **Netlify** (zdarma): `npm run nasadit`. Přihlášení k Netlify a první propojení webu jsou interaktivní –
+  dej je uživateli jako `! npx netlify-cli login` atd. (postup v `reference/web.md`). Pokročilá varianta: vlastní server (Docker/CapRover).
+  Nic nezveřejňuj bez výslovného souhlasu uživatele.
+
+## Režim AI Genealog – řešení jednotlivých badatelských případů a záhad
+Když uživatel nechce procházet celý průvodce stavbou rodinného webu, ale zadá **konkrétní badatelský úkol** (např. *„vysvětli rozpor mezi jmény Terezie a Marie v zápisech“*, *„ověř tuhle hypotézu“*, *„zjisti u sourozenců čitelnější rodné příjmení matky“*, *„dohledej jen předky této osoby ze snímku“*), postupuj takto:
+1. **Nerozšiřuj zadání a nestav web:** soustřeď se čistě na zadanou otázku. „Nenašel jsem“ nebo „záznamy si odporují“ je plnohodnotný výsledek – nic nedomýšlej.
+2. **Trvalý archiv snímků v `archivalie/`:**
+   - Každý stažený celý snímek matriky ukládej trvale do `archivalie/<archiv>_<obec>_<kniha>/snimek_<N>.jpg` (jedna složka na svazek, např. `archivalie/mza_vizovice_4926/snimek_051.jpg`) a do `archivalie/<archiv>_<obec>_<kniha>/zdroj.json` ulož název svazku a trvalé odkazy na snímky.
+   - **Před každým stažením se nejdřív podívej do `archivalie/` a `pracovni/`**, jestli už snímek nemáš na disku. Mezivýsledky a pokusy patří do `pracovni/`.
+3. **Evidence nálezů v `data/`:** Doložené matriční zápisy (`zaznamy.json`), svazky (`svazky.json`), přepisy (`prepisy.json`) a výřezy (`vyrezy/`, `zdroje/`) ukládej standardně přes `tools/zapis.py`, `vyrez.py` a `ramecek.py`, aby se mezi případy nikdy nehledalo totéž dvakrát. Do samotného stromu předků (`data/osoby.py`) zapisuj jen tehdy, když si to uživatel přeje (jinak si nálezy přenáší do svého genealogického programu sám).
+4. **Výstup = samostatná zpráva v `pripady/<klic_pripadu>.md` + řádek v `pripady/PREHLED.md`:**
+   - Piš česky, **nejdřív jasný závěr s mírou jistoty** (`doloženo` / `pravděpodobné` / `vyvráceno` / `zatím nevyřešeno`), **pak důkazy** (vložené výřezy zápisů `![…](../vyrezy/<klic>.jpg)`, doslovný přepis, překlad, odkazy na snímky a vysvětlení souvislostí – např. jak chyba v úmrtním zápisu vznikla nebo proč dvě zdánlivé sestry narozené 8 měsíců po sobě jsou tatáž osoba) a na konec **další doporučené kroky**.
+   - Zprávu v `pripady/<klic_pripadu>.md` si uživatel může přímo otevřít s vloženými obrázky matrik nebo vytisknout do PDF.
 
 ## Poznámky pro správce skillu
 Skill se zlepšuje podle zkušeností lidí, kteří ho používají. Proto **průběžně zapisuj do `poznamky_pro_skill.md`**
@@ -238,7 +257,9 @@ Nedělej to pořád. Postup:
 | `data/udaje_od_rodiny.md`, `data/archivni_dotazy.md` | co víme od rodiny; co jen v archivu |
 | `data/zajimavosti.md`, `data/pribeh.md`, `data/web.json`, `data/dokumenty.json`, `data/mista.json` | texty a nastavení webu, rodinné fotky, místa na mapě |
 | `vyrezy/`, `zdroje/` | výřezy zápisů a dokumentů (web / plné rozlišení), název = klíč + `.jpg` |
-| `dokumenty/`, `pracovni/` | originály od rodiny; pracovní soubory (nejdou na web) |
+| `archivalie/` | trvale uložené celé snímky matrik po svazcích (`<archiv>_<obec>_<kniha>/snimek_<N>.jpg` + `zdroj.json`) |
+| `pripady/` | badatelské zprávy jednotlivých případů v režimu AI Genealog (`<klic>.md` + `PREHLED.md`) |
+| `dokumenty/`, `pracovni/` | originály od rodiny; pracovní soubory a mezivýsledky (nejdou na web) |
 | `poznamky_pro_skill.md` | poznámky pro správce skillu (chyby, nové archivy, nápady) – posílá je uživatel ručně |
 | `tools/` | nástroje (kopie ze skillu; aktualizace celého projektu: znovu spustit `novy_projekt.py` na stejnou složku, viz `reference/web.md`) |
 | `web/` | web (Astro); data do něj jdou jen přes `npm run data` |
@@ -257,8 +278,10 @@ Nedělej to pořád. Postup:
 | `matricula_dl.sh`, `matricula_batch.sh` | snímky z Matriculy (Rakousko…), URL se bere z prohlížeče |
 | `anno.py`, `anno_snap.py`, `kramerius.py` | noviny: ANNO (rakouské), Kramerius (české) |
 | `ged_import.py strom.ged "Jméno"` | předci z rodinného stromu (GEDCOM) + fronta zápisů |
+| `ged_export.py [vystupy/rodokmen.ged] [--vychozi <k>]` | export rodokmenu z `data/osoby.py` do formátu GEDCOM 5.5.1 (`.ged`) |
+| `ged_porovnej.py <ref.ged> ["Jméno"] [--vychozi <k>]` | porovná předky v `data/osoby.py` s referenčním GEDCOMem po generacích |
 | `ftb_export.py strom.ftb out.ged ["Jméno" rok linie.md [Photos/]]` | záloha z MyHeritage (.ftb) → GEDCOM + přímá linie s původem údajů |
-| `overit.py <snímek> x0,y0,x1,y1 <prefix>` | zápis na dvě čitelné poloviny – ověření čtení (souřadnice = zlomky 0–1) |
+| `overit.py <snímek> x0,y0,x1,y1 / rejstrik <prefix>` | zápis na dvě poloviny (zlomky 0–1) nebo stránka rejstříku na 5 překrývajících se pásů |
 | `napady.py` | náměty na zajímavosti z dat |
 | `vyrez.py <stránka.jpg> <klíč> x0,y0,x1,y1` | výřez do `zdroje/` a `vyrezy/` |
 | `ramecek.py <klíč> x0,y0,x1,y1` | rámeček čteného místa + kontrolní obrázek |
